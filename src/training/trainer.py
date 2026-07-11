@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def build_training_args(config: dict[str, Any], output_dir: str) -> Seq2SeqTrainingArguments:
     tc = config["training"]
-    pc = config.get("precision", {})
+    pc = config.get("precision") or {}
     lc = config.get("logging", {})
     sc = config.get("saving", {})
     ec = config.get("evaluation", {})
