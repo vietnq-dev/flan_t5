@@ -28,9 +28,9 @@ def build_training_args(config: dict[str, Any], output_dir: str) -> Seq2SeqTrain
     device = get_device()
     auto_precision = get_precision_settings(device)
 
-    fp16 = pc.get("fp16", auto_precision["fp16"])
-    bf16 = pc.get("bf16", auto_precision["bf16"])
-    tf32 = pc.get("tf32", auto_precision["tf32"])
+    fp16 = auto_precision["fp16"] if pc.get("fp16") is None else pc["fp16"]
+    bf16 = auto_precision["bf16"] if pc.get("bf16") is None else pc["bf16"]
+    tf32 = auto_precision["tf32"] if pc.get("tf32") is None else pc["tf32"]
 
     if device == "mps":
         ac["dataloader_num_workers"] = 0

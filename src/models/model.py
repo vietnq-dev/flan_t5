@@ -34,23 +34,15 @@ def load_model_and_tokenizer(
 
     if device == "cuda":
         load_kwargs["dtype"] = torch.float16
-        load_kwargs["device_map"] = "auto"
     elif device == "mps":
         load_kwargs["dtype"] = torch.float32
     else:
         load_kwargs["dtype"] = torch.float32
 
     logger.info(f"Loading model on {device} with dtype={load_kwargs['dtype']}")
-    
-    try:
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_kwargs)
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        logger.info("Retrying without device_map...")
-        load_kwargs.pop("device_map", None)
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_kwargs)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_kwargs)
 
-    if device == "mps":
+    if device != "cuda":
         model = model.to(device)
 
     return model, tokenizer
