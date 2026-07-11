@@ -30,6 +30,9 @@ def main() -> None:
         "--max-train-samples", type=int, default=None, help="Limit training samples"
     )
     parser.add_argument("--max-eval-samples", type=int, default=None, help="Limit eval samples")
+    parser.add_argument(
+        "--max-samples", type=int, default=None, help="Limit total samples before split (streaming)"
+    )
     args = parser.parse_args()
 
     config = load_config(args.config, args.base_config)
@@ -57,7 +60,7 @@ def main() -> None:
     logger.info(f"Model parameters: {total:,} total, {trainable:,} trainable")
 
     logger.info("Loading datasets...")
-    datasets = load_datasets(config)
+    datasets = load_datasets(config, max_samples=args.max_samples)
     train_dataset = datasets["train"]
     eval_dataset = datasets["eval"]
 
