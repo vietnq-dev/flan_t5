@@ -17,6 +17,7 @@ dependencies = [
     "sacrebleu>=2.3.0",
     "tqdm>=4.66.0",
     "rich>=13.0.0",
+    "ijson>=3.5.1",
 ]
 
 [dependency-groups]
