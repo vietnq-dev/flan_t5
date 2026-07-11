@@ -1,0 +1,49 @@
+experiment:
+  id: "exp31"
+  name: "scaling_tasks_1060"
+  description: "Scaling number of tasks to all 1060 from CoT-Collection"
+  tags: [flan-t5-small, scaling-tasks, exp31]
+
+model:
+  name_or_path: "google/flan-t5-small"
+
+data:
+  dataset_name: "kaist-ai/CoT-Collection"
+  num_tasks: 1060
+  use_cot: true
+  max_source_length: 384
+  max_target_length: 256
+  eval_ratio: 0.05
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 5.0e-5
+  lr_scheduler_type: "linear"
+  warmup_ratio: 0.06
+
+precision:
+  fp16: false
+  bf16: false
+
+logging:
+  logging_steps: 50
+  report_to:
+    - "tensorboard"
+
+saving:
+  save_strategy: "epoch"
+  save_total_limit: 2
+
+evaluation:
+  evaluation_strategy: "epoch"
+  predict_with_generate: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  load_best_model_at_end: true
+
+generation:
+  max_length: 256
+  num_beams: 4
