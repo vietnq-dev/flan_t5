@@ -15,6 +15,7 @@ def load_cot_collection(
     num_tasks: int | None = None,
     eval_ratio: float = 0.05,
     seed: int = 42,
+    max_samples: int | None = None,
 ) -> DatasetDict:
     logger.info("Loading CoT-Collection dataset...")
     
@@ -36,6 +37,10 @@ def load_cot_collection(
         selected_tasks = rng.sample(all_tasks, num_tasks)
         dataset = dataset.filter(lambda x: x["task"] in selected_tasks)
     
+    if max_samples is not None and max_samples < len(dataset):
+        dataset = dataset.select(range(max_samples))
+        logger.info(f"Limited to {max_samples} samples")
+    
     split = dataset.train_test_split(test_size=eval_ratio, seed=seed)
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
@@ -55,7 +60,7 @@ def load_sat_math_datasets(
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
 
-def load_datasets(config: dict[str, Any]) -> DatasetDict:
+def load_datasets(config: dict[str, Any], max_samples: int | None = None) -> DatasetDict:
     data_config = config["data"]
 
     if data_config.get("datasets"):
@@ -69,4 +74,5 @@ def load_datasets(config: dict[str, Any]) -> DatasetDict:
         num_tasks=data_config.get("num_tasks"),
         eval_ratio=data_config.get("eval_ratio", 0.05),
         seed=data_config.get("seed", 42),
+        max_samples=max_samples,
     )
