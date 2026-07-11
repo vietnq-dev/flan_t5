@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
-from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
 
@@ -18,29 +15,27 @@ def load_cot_collection(
     max_samples: int | None = None,
 ) -> DatasetDict:
     logger.info("Loading CoT-Collection dataset...")
-    
-    json_path = hf_hub_download(
-        repo_id="kaist-ai/CoT-Collection",
-        filename="data/CoT_collection_en.json",
-        repo_type="dataset",
-    )
-    
-    with open(json_path, "r") as f:
-        data = json.load(f)
-    
-    dataset = Dataset.from_list(list(data.values()))
-    logger.info(f"Loaded {len(dataset)} samples from JSON")
-    
-    all_tasks = sorted(set(dataset["task"]))
-    if num_tasks is not None and num_tasks < len(all_tasks):
+
+    ds = load_dataset("kaist-ai/CoT-Collection", "en", split="train", streaming=True)
+
+    if num_tasks is not None:
+        logger.info("Discovering tasks...")
+        seen: set[str] = set()
+        for ex in ds:
+            seen.add(ex["task"])
         rng = __import__("random").Random(seed)
-        selected_tasks = rng.sample(all_tasks, num_tasks)
-        dataset = dataset.filter(lambda x: x["task"] in selected_tasks)
-    
-    if max_samples is not None and max_samples < len(dataset):
-        dataset = dataset.select(range(max_samples))
+        selected = set(rng.sample(sorted(seen), min(num_tasks, len(seen))))
+        ds = load_dataset("kaist-ai/CoT-Collection", "en", split="train", streaming=True)
+        ds = ds.filter(lambda x: x["task"] in selected)
+        logger.info(f"Filtered to {num_tasks} tasks")
+
+    if max_samples is not None:
+        ds = ds.take(max_samples)
         logger.info(f"Limited to {max_samples} samples")
-    
+
+    dataset = Dataset.from_list(list(ds))
+    logger.info(f"Loaded {len(dataset)} samples")
+
     split = dataset.train_test_split(test_size=eval_ratio, seed=seed)
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
