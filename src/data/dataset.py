@@ -1,25 +1,25 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+import tempfile
 from typing import Any, Iterator
 
 import ijson
-from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
+from datasets import DatasetDict, concatenate_datasets, load_dataset
 from huggingface_hub import hf_hub_download
 
 logger = logging.getLogger(__name__)
 
 
 def _iter_records(filepath: str) -> Iterator[dict[str, Any]]:
-    """Yield each record from a JSON dict ``{id: record, ...}``
-    without loading the whole file into memory."""
     with open(filepath, "rb") as f:
         for _, val in ijson.kvitems(f, ""):
             yield val
 
 
 def _select_tasks(filepath: str, num_tasks: int, seed: int) -> set[str]:
-    """First pass: stream through JSON to collect all unique task names."""
     seen: set[str] = set()
     for val in _iter_records(filepath):
         seen.add(val["task"])
@@ -47,20 +47,29 @@ def load_cot_collection(
         selected_tasks = _select_tasks(json_path, num_tasks, seed)
         logger.info(f"Filtered to {num_tasks} tasks")
 
-    logger.info("Streaming records...")
-    records: list[dict[str, Any]] = []
-    for val in _iter_records(json_path):
-        if selected_tasks is not None and val["task"] not in selected_tasks:
-            continue
-        records.append(val)
-        if max_samples is not None and len(records) >= max_samples:
-            break
+    logger.info("Streaming records to temp file...")
+    fd, tmp_path = tempfile.mkstemp(suffix=".jsonl")
+    count = 0
+    try:
+        with os.fdopen(fd, "w") as f:
+            for val in _iter_records(json_path):
+                if selected_tasks is not None and val["task"] not in selected_tasks:
+                    continue
+                f.write(json.dumps(val) + "\n")
+                count += 1
+                if max_samples is not None and count >= max_samples:
+                    break
 
-    logger.info(f"Loaded {len(records)} samples")
-    dataset = Dataset.from_list(records)
-    del records
+        logger.info(f"Loaded {count} samples, building dataset...")
+        dataset = load_dataset("json", data_files=tmp_path, split="train")
+        logger.info(f"Dataset built: {len(dataset)} samples")
+    finally:
+        os.unlink(tmp_path)
 
     split = dataset.train_test_split(test_size=eval_ratio, seed=seed)
+    logger.info(
+        f"Split: {len(split['train'])} train, {len(split['test'])} eval"
+    )
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
 

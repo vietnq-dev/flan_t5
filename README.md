@@ -14,18 +14,6 @@ Verify installation:
 uv run python -c "import torch; print(torch.__version__); print('MPS:', torch.backends.mps.is_available()); print('CUDA:', torch.cuda.is_available())"
 ```
 
-## Device Support
-
-Device detection is automatic. No config changes needed.
-
-| Device | Precision | Notes |
-|--------|-----------|-------|
-| **NVIDIA T4** (Colab) | fp16 | 16GB VRAM. Use `batch_size=4`, `grad_accum=4` |
-| **Apple Silicon** (M1/M2/M3/M4) | bf16 | MPS backend. `dataloader_num_workers` auto-set to 0 |
-| **CPU** | fp32 | Slow but works. Reduce `max_source_length` to 256 for speed |
-
-Override precision manually if needed:
-
 ```bash
 uv run python scripts/train.py --config configs/exp33_cot/flan_t5_small_with_cot.yaml
 ```
