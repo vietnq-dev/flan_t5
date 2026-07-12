@@ -34,15 +34,11 @@ def load_model_and_tokenizer(
 
     if device == "cuda":
         load_kwargs["dtype"] = torch.float16
-    elif device == "mps":
-        load_kwargs["dtype"] = torch.float32
     else:
         load_kwargs["dtype"] = torch.float32
 
     logger.info(f"Loading model on {device} with dtype={load_kwargs['dtype']}")
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_kwargs)
-
-    if device != "cuda":
-        model = model.to(device)
+    model = model.to(device)
 
     return model, tokenizer

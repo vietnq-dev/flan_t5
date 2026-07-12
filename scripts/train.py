@@ -10,7 +10,7 @@ from src.evaluation.metrics import compute_metrics_with_tokenizer
 from src.models.model import load_model_and_tokenizer
 from src.training.trainer import create_trainer
 from src.utils.config import load_config
-from src.utils.helpers import count_parameters, get_device, get_device_info, set_seed
+from src.utils.helpers import count_parameters, get_device_info, set_seed
 from src.utils.logging import (
     get_output_dir,
     log_config_summary,
@@ -45,8 +45,6 @@ def main() -> None:
     logger.info(f"Device: {device_info['device']}")
     if "gpu_name" in device_info:
         logger.info(f"GPU: {device_info['gpu_name']} ({device_info['gpu_memory_gb']:.1f} GB)")
-    elif device_info["device"] == "mps":
-        logger.info("Backend: Metal Performance Shaders (Apple Silicon)")
 
     log_config_summary(config, logger)
     save_config(config, output_dir)
@@ -74,8 +72,7 @@ def main() -> None:
 
     logger.info("Tokenizing datasets...")
     data_config = config["data"]
-    device = get_device()
-    num_proc = None if device == "mps" else data_config.get("preprocessing_num_workers", 4)
+    num_proc = data_config.get("preprocessing_num_workers", 4)
 
     train_dataset = tokenize_dataset(
         train_dataset,

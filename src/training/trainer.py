@@ -32,9 +32,6 @@ def build_training_args(config: dict[str, Any], output_dir: str) -> Seq2SeqTrain
     bf16 = auto_precision["bf16"] if pc.get("bf16") is None else pc["bf16"]
     tf32 = auto_precision["tf32"] if pc.get("tf32") is None else pc["tf32"]
 
-    if device == "mps":
-        ac["dataloader_num_workers"] = 0
-
     logger.info(f"Device: {device}")
     logger.info(f"Precision: fp16={fp16}, bf16={bf16}, tf32={tf32}")
 
@@ -73,7 +70,7 @@ def build_training_args(config: dict[str, Any], output_dir: str) -> Seq2SeqTrain
         load_best_model_at_end=ec.get("load_best_model_at_end", True),
         predict_with_generate=ec.get("predict_with_generate", True),
         seed=ac.get("seed", 42),
-        dataloader_num_workers=ac.get("dataloader_num_workers", 0 if device == "mps" else 2),
+        dataloader_num_workers=ac.get("dataloader_num_workers", 2),
         gradient_checkpointing=ac.get("gradient_checkpointing", False),
         push_to_hub=ac.get("push_to_hub", False),
         hub_model_id=ac.get("hub_model_id"),
@@ -108,7 +105,7 @@ def create_trainer(
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics_fn,
         callbacks=callbacks,

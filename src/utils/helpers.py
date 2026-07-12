@@ -54,18 +54,14 @@ def flatten_dict(d: dict[str, Any], parent_key: str = "", sep: str = ".") -> dic
 
 
 def get_device() -> str:
-    """Detect the best available device: CUDA > MPS > CPU."""
     import torch
 
     if torch.cuda.is_available():
         return "cuda"
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return "mps"
     return "cpu"
 
 
 def get_device_info() -> dict[str, Any]:
-    """Get detailed device information."""
     import torch
 
     device = get_device()
@@ -75,8 +71,6 @@ def get_device_info() -> dict[str, Any]:
         info["gpu_name"] = torch.cuda.get_device_name(0)
         info["gpu_memory_gb"] = torch.cuda.get_device_properties(0).total_memory / 1e9
         info["cuda_version"] = torch.version.cuda
-    elif device == "mps":
-        info["backend"] = "Metal Performance Shaders (Apple Silicon)"
     else:
         info["backend"] = "CPU"
 
@@ -84,20 +78,11 @@ def get_device_info() -> dict[str, Any]:
 
 
 def get_precision_settings(device: str) -> dict[str, bool]:
-    """Get optimal precision settings for the device.
-
-    T4 GPU: supports fp16 (not bf16)
-    MPS: supports bf16 (recommended) and fp16
-    CPU: no mixed precision
-    """
     if device == "cuda":
         import torch
 
-        gpu_name = torch.cuda.get_device_name(0).lower()
-        if "t4" in gpu_name or torch.cuda.get_device_capability()[0] >= 7:
-            return {"fp16": True, "bf16": False, "tf32": False}
-        return {"fp16": False, "bf16": True, "tf32": True}
-    elif device == "mps":
-        return {"fp16": False, "bf16": True, "tf32": False}
-    else:
-        return {"fp16": False, "bf16": False, "tf32": False}
+        capability = torch.cuda.get_device_capability()[0]
+        if capability >= 8:
+            return {"fp16": True, "bf16": True, "tf32": True}
+        return {"fp16": True, "bf16": False, "tf32": False}
+    return {"fp16": False, "bf16": False, "tf32": False}
