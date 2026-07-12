@@ -63,6 +63,25 @@ class ExperimentCallback(TrainerCallback):
 
         logger.info(f"Step {step} eval results saved to {results_file}")
 
+    def on_log(
+        self,
+        args: Any,
+        state: TrainerState,
+        control: TrainerControl,
+        logs: dict[str, float] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if logs is None:
+            return
+
+        key_metrics = {
+            k: logs[k]
+            for k in ("loss", "grad_norm", "learning_rate", "epoch")
+            if k in logs
+        }
+        if key_metrics:
+            logger.info(f"Step {state.global_step}: {key_metrics}")
+
     def on_save(
         self,
         args: Any,
