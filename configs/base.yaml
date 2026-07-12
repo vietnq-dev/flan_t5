@@ -73,7 +73,7 @@ generation:
 
 advanced:
   seed: 42
-  dataloader_num_workers: 2
+  dataloader_num_workers: 0
   gradient_checkpointing: false
   deepspeed: null
   fsdp: null

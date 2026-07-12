@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import torch
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
@@ -32,13 +31,7 @@ def load_model_and_tokenizer(
         "trust_remote_code": model_config.get("trust_remote_code", False),
     }
 
-    if device == "cuda":
-        load_kwargs["dtype"] = torch.float16
-    else:
-        load_kwargs["dtype"] = torch.float32
-
-    logger.info(f"Loading model on {device} with dtype={load_kwargs['dtype']}")
+    logger.info(f"Loading model on {device} (fp32 weights; AMP handles fp16 via Trainer)")
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_kwargs)
-    model = model.to(device)
 
     return model, tokenizer

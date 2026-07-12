@@ -104,6 +104,7 @@ def main() -> None:
 
     logger.info("Starting training...")
     resume = config.get("advanced", {}).get("resume_from_checkpoint")
+    logger.info("Calling trainer.train()...")
     train_result = trainer.train(resume_from_checkpoint=resume)
 
     logger.info("Saving final model...")
