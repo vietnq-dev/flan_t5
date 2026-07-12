@@ -24,6 +24,7 @@ def setup_logging(
         log_dir = Path(output_dir) / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(log_dir / "training.log")
+        file_handler.setLevel(level)
         file_handler.setFormatter(
             logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         )
