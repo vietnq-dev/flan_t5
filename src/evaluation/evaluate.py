@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from src.utils.helpers import get_device
@@ -44,7 +45,18 @@ def evaluate_checkpoint(
     logger.info(f"Evaluating on {len(eval_dataset)} samples...")
 
     batch_size = config["training"].get("per_device_eval_batch_size", 4)
-    for i in range(0, len(eval_dataset), batch_size):
+    total_batches = (len(eval_dataset) + batch_size - 1) // batch_size
+    logger.info(
+        f"Generating: {len(eval_dataset)} samples, batch_size={batch_size}, "
+        f"num_beams={num_beams}, max_length={max_length} ({total_batches} batches)"
+    )
+    pbar = tqdm(
+        range(0, len(eval_dataset), batch_size),
+        total=total_batches,
+        desc="generate",
+        unit="batch",
+    )
+    for i in pbar:
         batch_end = min(i + batch_size, len(eval_dataset))
         batch = eval_dataset[i:batch_end]
 
@@ -74,7 +86,13 @@ def evaluate_checkpoint(
     rouge_scores = {"rouge1": [], "rouge2": [], "rougeL": []}
     exact_matches = 0
 
-    for pred, ref in zip(predictions, references):
+    scoring = tqdm(
+        zip(predictions, references),
+        total=len(predictions),
+        desc="score",
+        unit="ex",
+    )
+    for pred, ref in scoring:
         if pred == ref:
             exact_matches += 1
         scores = scorer.score(ref, pred)
