@@ -11,40 +11,79 @@ uv sync --all-groups
 Verify installation:
 
 ```bash
-uv run python -c "import torch; print(torch.__version__); print('MPS:', torch.backends.mps.is_available()); print('CUDA:', torch.cuda.is_available())"
+uv run python -c "import torch; print(torch.__version__); print('CUDA:', torch.cuda.is_available())"
 ```
 
 ```bash
 uv run python scripts/train.py --config configs/exp33_cot/flan_t5_small_with_cot.yaml
 ```
 
-The config `precision` fields default to `null` (auto-detect). Set them explicitly to override:
+## Precision (important for T5 on T4)
+
+`base.yaml` pins `fp16: false`. T5's parallel attention numerically NaNs
+(`loss=0.0`, `grad_norm=nan`, `lr=0.0`) under fp16 autocast — known issue
+on T4 (Turing, no bf16 support). The Trainer runs fp32 on T4 (small
+flan-t5 fits in 15.6 GB easily). On Ampere+ GPUs (A100, etc.), `bf16`
+auto-enables for speed. Override per-config if needed:
 
 ```yaml
 precision:
-  fp16: true   # force fp16 on T4
-  bf16: false
-  tf32: false
+  fp16: false      # keep false for T5
+  bf16: true       # set true on Ampere+ if you want explicit bf16
+  tf32: true
 ```
+
+## Dataloader workers
+
+`base.yaml` pins `dataloader_num_workers: 0`. Higher values can deadlock
+the PyTorch DataLoader in Jupyter/Colab (fork-based workers + HF
+datasets), causing the trainer to hang after `on_train_begin` with no
+tqdm bar. Bump per-config for CLI/local throughput, leave `0` on
+notebooks.
+
+## Running on Google Colab (T4)
+
+Use a **T4 GPU runtime**. Clone the repo, install deps, then run `train.py`
+directly. Pin `--max-samples` for quick tests; drop it for full runs.
+
+```bash
+!git clone https://github.com/vietnq-dev/flan_t5.git /content/flan_t5
+%cd /content/flan_t5
+!pip install -q torch transformers datasets accelerate sentencepiece \
+  tensorboard rouge-score nltk sacrebleu tqdm rich pyyaml ijson
+
+# quick sanity check (5k samples, ~10 min on T4)
+!python scripts/train.py \
+  --config configs/exp33_cot/flan_t5_small_with_cot.yaml \
+  --max-samples 5000
+```
+
+Watch the log: after `Calling trainer.train()...` you should see `Step 1:
+{'loss': ...}` within ~2s. If `loss=0.0` / `grad_norm=nan` appears, fp16 is
+still on somewhere — ensure `precision.fp16: false` in config. For
+TensorBoard in Colab, see the [TensorBoard](#tensorboard) section below.
 
 ## Experiment Guide
 
 Run experiments in this order, from quickest to most expensive:
 
-### Step 1: Quick sanity check (~10 min on T4, ~1h on MPS)
+### Step 1: Quick sanity check (~10 min on T4)
 
-Verify the pipeline works end-to-end with a tiny subset:
+Verify the pipeline works end-to-end with a tiny subset. Use `--max-samples`
+to cap dataset loading at the source (otherwise the full 1.8M CoT-Collection
+streams, which is slow):
 
 ```bash
 uv run python scripts/train.py \
   --config configs/exp33_cot/flan_t5_small_with_cot.yaml \
-  --max-train-samples 100 \
-  --max-eval-samples 20
+  --max-samples 1000
 ```
 
-This downloads the model, tokenizes 100 samples, trains for 3 epochs, and evaluates. If this works, everything is set up correctly.
+This downloads the model, streams 1000 samples, tokenizes, trains for the
+configured epochs, and evaluates. If this works, everything is set up
+correctly.
 
-### Step 2: Experiment 3.3 - Chain-of-Thought effect (~2-4h on T4, ~8-16h on MPS)
+### Step 2: Experiment 3.3 - Chain-of-Thought effect (~2-4h on T4)
 
 Compare training with vs without CoT rationales. This is the most impactful experiment and uses the smallest dataset.
 
@@ -63,7 +102,7 @@ uv run python scripts/train.py --config configs/exp33_cot/flan_t5_base_no_cot.ya
 
 **What to look for:** Models trained with CoT should show better ROUGE-L scores. Models without CoT should degrade on reasoning tasks.
 
-### Step 3: Experiment 3.2 - Scaling model size (~1-2h on T4, ~4-8h on MPS)
+### Step 3: Experiment 3.2 - Scaling model size (~1-2h on T4)
 
 Train small and base on SAT Reading + Elementary Math (smaller datasets).
 
@@ -73,7 +112,7 @@ uv run scripts/run_experiment.py --experiment exp32
 
 **What to look for:** Flan-T5-Base should outperform Flan-T5-Small on the same data, demonstrating that instruction tuning benefits scale with model size.
 
-### Step 4: Experiment 3.1 - Scaling number of tasks (~4-8h on T4, ~16-32h on MPS)
+### Step 4: Experiment 3.1 - Scaling number of tasks (~4-8h on T4)
 
 The largest experiment. Trains on 100, 300, 600, and 1060 tasks from CoT-Collection.
 
@@ -94,7 +133,7 @@ uv run scripts/run_experiment.py --experiment all
 ```
 flan_t5/
 ├── configs/
-│   ├── base.yaml                          # Shared defaults (auto-precision)
+│   ├── base.yaml                          # Shared defaults (fp32/bf16, workers=0)
 │   ├── exp31_scaling_tasks/               # 4 configs: 100/300/600/1060 tasks
 │   ├── exp32_scaling_model/               # 2 configs: small + base on SAT/math
 │   └── exp33_cot/                         # 4 configs: with/without CoT x small/base
@@ -148,13 +187,52 @@ uv run python scripts/evaluate.py \
   --checkpoint outputs/flan-t5-small/cot_small_with_cot_lr5e-05_bs4x4_20260711_1430
 ```
 
-Metrics: ROUGE-1, ROUGE-2, ROUGE-L, Exact Match, Eval Loss.
+Metrics: ROUGE-1, ROUGE-2, ROUGE-L, Exact Match, Num samples. Generation
+and scoring show tqdm progress bars with ETA.
+
+### Fast smoke evaluation
+
+`--max-samples` / `--max-eval-samples` cap dataset loading at the source so
+you don't stream the full 1.8M CoT-Collection just to test a checkpoint.
+`--num-beams 1` (greedy) is ~4× faster than the default `num_beams: 4` and
+is fine for iterative ROUGE. `--batch-size` overrides the per-device eval
+batch size.
+
+```bash
+uv run python scripts/evaluate.py \
+  --config configs/exp33_cot/flan_t5_small_with_cot.yaml \
+  --checkpoint outputs/flan-t5-small/cot_small_with_cot_lr5e-05_bs4x4_20260711_1430 \
+  --max-eval-samples 500 \
+  --num-beams 1 \
+  --batch-size 8
+```
+
+Flag reference:
+
+| Flag                    | Purpose                                                            |
+| ----------------------- | ----------------------------------------------------------------- |
+| `--max-samples N`       | Cap total samples before split (source cap during streaming)        |
+| `--max-eval-samples N`  | Select first N eval samples after split (smoke test)               |
+| `--num-beams N`         | Override `generation.num_beams` (1 = greedy, ~4× faster)           |
+| `--batch-size N`        | Override `per_device_eval_batch_size`                              |
+
+Metrics: ROUGE-1, ROUGE-2, ROUGE-L, Exact Match, Num samples.
 
 ## TensorBoard
 
 ```bash
 uv run tensorboard --logdir outputs/
 ```
+
+On Colab, run in a cell after training starts:
+
+```python
+%load_ext tensorboard
+%tensorboard --logdir outputs
+```
+
+Colab streams events live; keep `--logdir outputs` to compare all runs
+(grouped by subfolder name).
 
 ## Datasets
 
@@ -166,8 +244,12 @@ uv run tensorboard --logdir outputs/
 
 ## Tips for Low-Resource
 
-- Start with `--max-train-samples 500` to test configs before full runs
+- Start with `--max-samples 1000` to test configs before full runs (caps
+  loading at the source; `--max-train-samples` only slices after loading)
 - Reduce `max_source_length` to 256 in config for faster training
 - Use `gradient_accumulation_steps: 8` with `batch_size: 2` to save memory
 - Set `save_total_limit: 1` to keep only the best checkpoint
-- On MPS: avoid `num_proc > 0` for dataset preprocessing (auto-handled)
+- Keep `precision.fp16: false` for T5 (fp16 NaNs the loss on T4). Use bf16
+  on Ampere+ if available.
+- Keep `dataloader_num_workers: 0` on Colab/Jupyter (workers can deadlock
+  the DataLoader); bump to 2+ only on CLI/local runs.
