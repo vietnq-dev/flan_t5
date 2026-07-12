@@ -41,7 +41,10 @@ training:
   max_steps: -1
 
 precision:
-  fp16: null
+  # fp16 disabled: T5/T5d attention numerically NaNs under fp16 autocast.
+  # On T4 (no bf16) we run fp32 (small flan-t5 fits in 15.6GB easily);
+  # on Ampere+ bf16 is auto-enabled below.
+  fp16: false
   bf16: null
   tf32: null
 
