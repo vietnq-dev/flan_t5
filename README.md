@@ -65,13 +65,13 @@ TensorBoard in Colab, see the [TensorBoard](#tensorboard) section below.
 
 ## Experiment Guide
 
-Run experiments in this order, from quickest to most expensive:
+All experiments in recommended order, from quickest to most expensive:
 
-### Step 1: Quick sanity check (~10 min on T4)
+---
 
-Verify the pipeline works end-to-end with a tiny subset. Use `--max-samples`
-to cap dataset loading at the source (otherwise the full 1.8M CoT-Collection
-streams, which is slow):
+### 0. Quick sanity check (~10 min on T4)
+
+Verify the pipeline works end-to-end with a tiny subset:
 
 ```bash
 uv run python scripts/train.py \
@@ -79,53 +79,145 @@ uv run python scripts/train.py \
   --max-samples 1000
 ```
 
-This downloads the model, streams 1000 samples, tokenizes, trains for the
-configured epochs, and evaluates. If this works, everything is set up
-correctly.
+---
 
-### Step 2: Experiment 3.3 - Chain-of-Thought effect (~2-4h on T4)
+### 1. Exp 3.3 — Chain-of-Thought effect (~2–4h on T4)
 
-Compare training with vs without CoT rationales. This is the most impactful experiment and uses the smallest dataset.
+Compare training with vs without CoT rationales. Most impactful experiment, smallest dataset.
+
+**Batch run:**
 
 ```bash
 uv run scripts/run_experiment.py --experiment exp33
 ```
 
-Or run individually:
+**Individual configs:**
 
 ```bash
-uv run python scripts/train.py --config configs/exp33_cot/flan_t5_small_with_cot.yaml
+# -- Flan-T5-Small -------------------------------------------------------
 uv run python scripts/train.py --config configs/exp33_cot/flan_t5_small_no_cot.yaml
-uv run python scripts/train.py --config configs/exp33_cot/flan_t5_base_with_cot.yaml
+uv run python scripts/train.py --config configs/exp33_cot/flan_t5_small_with_cot.yaml
+
+# -- Flan-T5-Base --------------------------------------------------------
 uv run python scripts/train.py --config configs/exp33_cot/flan_t5_base_no_cot.yaml
+uv run python scripts/train.py --config configs/exp33_cot/flan_t5_base_with_cot.yaml
 ```
 
-**What to look for:** Models trained with CoT should show better ROUGE-L scores. Models without CoT should degrade on reasoning tasks.
+**What to look for:** Models trained with CoT should show better ROUGE-L. Models without CoT should degrade on reasoning tasks.
 
-### Step 3: Experiment 3.2 - Scaling model size (~1-2h on T4)
+**Evaluate:**
 
-Train small and base on SAT Reading + Elementary Math (smaller datasets).
+```bash
+# After training, evaluate each checkpoint:
+uv run python scripts/evaluate.py \
+  --config configs/exp33_cot/flan_t5_small_no_cot.yaml \
+  --checkpoint outputs/flan-t5-small/<cot_small_no_cot_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp33_cot/flan_t5_small_with_cot.yaml \
+  --checkpoint outputs/flan-t5-small/<cot_small_with_cot_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp33_cot/flan_t5_base_no_cot.yaml \
+  --checkpoint outputs/flan-t5-base/<cot_base_no_cot_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp33_cot/flan_t5_base_with_cot.yaml \
+  --checkpoint outputs/flan-t5-base/<cot_base_with_cot_run>
+```
+
+---
+
+### 2. Exp 3.2 — Scaling model size (~1–2h on T4)
+
+Train Small and Base on SAT Reading + Elementary Math.
+
+**Batch run:**
 
 ```bash
 uv run scripts/run_experiment.py --experiment exp32
 ```
 
-**What to look for:** Flan-T5-Base should outperform Flan-T5-Small on the same data, demonstrating that instruction tuning benefits scale with model size.
+**Individual configs:**
 
-### Step 4: Experiment 3.1 - Scaling number of tasks (~4-8h on T4)
+```bash
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
+```
 
-The largest experiment. Trains on 100, 300, 600, and 1060 tasks from CoT-Collection.
+**What to look for:** Base > Small on the same data — instruction-tuning benefits scale with model size.
+
+**Evaluate:**
+
+```bash
+uv run python scripts/evaluate.py \
+  --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml \
+  --checkpoint outputs/flan-t5-small/<sat_math_small_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml \
+  --checkpoint outputs/flan-t5-base/<sat_math_base_run>
+```
+
+---
+
+### 3. Exp 3.1 — Scaling number of tasks (~4–8h on T4)
+
+Largest experiment. Trains Small on 100, 300, 600, and 1060 tasks from CoT-Collection.
+
+**Batch run:**
 
 ```bash
 uv run scripts/run_experiment.py --experiment exp31
 ```
 
-**What to look for:** Performance should improve with more tasks, but with diminishing returns after ~300 tasks (matching the paper's finding of diminishing returns after 282 tasks).
+**Individual configs:**
 
-### Run everything
+```bash
+uv run python scripts/train.py --config configs/exp31_scaling_tasks/flan_t5_small_100tasks.yaml
+uv run python scripts/train.py --config configs/exp31_scaling_tasks/flan_t5_small_300tasks.yaml
+uv run python scripts/train.py --config configs/exp31_scaling_tasks/flan_t5_small_600tasks.yaml
+uv run python scripts/train.py --config configs/exp31_scaling_tasks/flan_t5_small_1060tasks.yaml
+```
+
+**What to look for:** Performance improves with more tasks, diminishing returns after ~300 tasks (matches the paper's finding at 282 tasks).
+
+**Evaluate:**
+
+```bash
+uv run python scripts/evaluate.py \
+  --config configs/exp31_scaling_tasks/flan_t5_small_100tasks.yaml \
+  --checkpoint outputs/flan-t5-small/<100tasks_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp31_scaling_tasks/flan_t5_small_300tasks.yaml \
+  --checkpoint outputs/flan-t5-small/<300tasks_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp31_scaling_tasks/flan_t5_small_600tasks.yaml \
+  --checkpoint outputs/flan-t5-small/<600tasks_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp31_scaling_tasks/flan_t5_small_1060tasks.yaml \
+  --checkpoint outputs/flan-t5-small/<1060tasks_run>
+```
+
+---
+
+### All experiments
 
 ```bash
 uv run scripts/run_experiment.py --experiment all
+```
+
+### Quick reference
+
+```bash
+# List all experiments
+uv run scripts/run_experiment.py --list
+
+# Dry run (print commands only)
+uv run scripts/run_experiment.py --experiment exp33 --dry-run
 ```
 
 ## Project Structure
