@@ -9,6 +9,7 @@ build/
 
 outputs/
 checkpoints/
+/models/
 wandb/
 runs/
 *.tfevents.*

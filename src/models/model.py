@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
+import subprocess
+from pathlib import Path
 from typing import Any
 
-from huggingface_hub import snapshot_download
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
@@ -15,6 +16,55 @@ from src.utils.helpers import get_device
 
 logger = logging.getLogger(__name__)
 
+_MODEL_FILES = [
+    "config.json",
+    "tokenizer_config.json",
+    "spiece.model",
+    "tokenizer.json",
+    "special_tokens_map.json",
+    "model.safetensors",
+]
+
+
+def _download_file(url: str, dest: Path, retries: int = 10) -> None:
+    for attempt in range(1, retries + 1):
+        logger.info(f"  [{attempt}/{retries}] {dest.name}")
+        result = subprocess.run(
+            [
+                "wget",
+                "--continue",
+                "--retry-connrefused",
+                "--timeout=30",
+                "--waitretry=5",
+                "--tries=5",
+                "-q",
+                "-O",
+                str(dest),
+                url,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            logger.info(f"  ✓ {dest.name} ({dest.stat().st_size / 1e6:.1f} MB)")
+            return
+        logger.warning(f"  ✗ {dest.name} failed (attempt {attempt}): {result.stderr.strip()}")
+    raise RuntimeError(f"Failed to download {url} after {retries} attempts")
+
+
+def _download_model_repo(model_name: str, dest_dir: Path) -> Path:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    base_url = f"https://huggingface.co/{model_name}/resolve/main"
+
+    for filename in _MODEL_FILES:
+        dest = dest_dir / filename
+        if dest.exists() and dest.stat().st_size > 0:
+            logger.info(f"  ✓ {filename} (cached, {dest.stat().st_size / 1e6:.1f} MB)")
+            continue
+        _download_file(f"{base_url}/{filename}", dest)
+
+    return dest_dir
+
 
 def load_model_and_tokenizer(
     config: dict[str, Any],
@@ -22,19 +72,16 @@ def load_model_and_tokenizer(
     model_config = config["model"]
     model_name = model_config["name_or_path"]
 
-    tokenizer_name = model_config.get("tokenizer_name") or model_name
-    logger.info(f"Downloading tokenizer from {tokenizer_name}")
+    cache_dir = Path("models") / model_name.replace("/", "_")
+    logger.info(f"Downloading model {model_name} to {cache_dir}")
+    local_path = _download_model_repo(model_name, cache_dir)
+
+    tokenizer_name = model_config.get("tokenizer_name") or str(local_path)
+    logger.info(f"Loading tokenizer from {tokenizer_name}")
     tokenizer = AutoTokenizer.from_pretrained(
-        tokenizer_name,
+        tokenizer_name if model_config.get("tokenizer_name") else local_path,
         use_fast=True,
     )
-
-    local_path = snapshot_download(
-        repo_id=model_name,
-        resume_download=True,
-        max_workers=4,
-    )
-    logger.info(f"Model cached at {local_path}")
 
     device = get_device()
     load_kwargs: dict[str, Any] = {
