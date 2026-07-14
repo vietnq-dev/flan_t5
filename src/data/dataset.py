@@ -4,22 +4,24 @@ import json
 import logging
 import os
 import tempfile
+from pathlib import Path
 from typing import Any, Iterator
 
 import ijson
 from datasets import DatasetDict, concatenate_datasets, load_dataset
-from huggingface_hub import hf_hub_download
+
+from src.utils.download import download_file
 
 logger = logging.getLogger(__name__)
 
 
-def _iter_records(filepath: str) -> Iterator[dict[str, Any]]:
+def _iter_records(filepath: str | Path) -> Iterator[dict[str, Any]]:
     with open(filepath, "rb") as f:
         for _, val in ijson.kvitems(f, ""):
             yield val
 
 
-def _select_tasks(filepath: str, num_tasks: int, seed: int) -> set[str]:
+def _select_tasks(filepath: str | Path, num_tasks: int, seed: int) -> set[str]:
     seen: set[str] = set()
     for val in _iter_records(filepath):
         seen.add(val["task"])
@@ -35,11 +37,16 @@ def load_cot_collection(
 ) -> DatasetDict:
     logger.info("Loading CoT-Collection dataset...")
 
-    json_path = hf_hub_download(
-        repo_id="kaist-ai/CoT-Collection",
-        filename="data/CoT_collection_en.json",
-        repo_type="dataset",
-    )
+    cache_dir = Path("data") / "kaist-ai_CoT-Collection"
+    json_path = cache_dir / "CoT_collection_en.json"
+
+    if not (json_path.exists() and json_path.stat().st_size > 0):
+        url = (
+            "https://huggingface.co/datasets/kaist-ai/CoT-Collection"
+            "/resolve/main/data/CoT_collection_en.json"
+        )
+        logger.info(f"Downloading CoT-Collection ({url})...")
+        download_file(url, json_path)
 
     selected_tasks: set[str] | None = None
     if num_tasks is not None:

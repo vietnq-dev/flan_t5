@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +11,7 @@ from transformers import (
     PreTrainedTokenizer,
 )
 
+from src.utils.download import download_file
 from src.utils.helpers import get_device
 
 logger = logging.getLogger(__name__)
@@ -26,32 +26,6 @@ _MODEL_FILES = [
 ]
 
 
-def _download_file(url: str, dest: Path, retries: int = 10) -> None:
-    for attempt in range(1, retries + 1):
-        logger.info(f"  [{attempt}/{retries}] {dest.name}")
-        result = subprocess.run(
-            [
-                "wget",
-                "--continue",
-                "--retry-connrefused",
-                "--timeout=30",
-                "--waitretry=5",
-                "--tries=5",
-                "-q",
-                "-O",
-                str(dest),
-                url,
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            logger.info(f"  ✓ {dest.name} ({dest.stat().st_size / 1e6:.1f} MB)")
-            return
-        logger.warning(f"  ✗ {dest.name} failed (attempt {attempt}): {result.stderr.strip()}")
-    raise RuntimeError(f"Failed to download {url} after {retries} attempts")
-
-
 def _download_model_repo(model_name: str, dest_dir: Path) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     base_url = f"https://huggingface.co/{model_name}/resolve/main"
@@ -61,7 +35,7 @@ def _download_model_repo(model_name: str, dest_dir: Path) -> Path:
         if dest.exists() and dest.stat().st_size > 0:
             logger.info(f"  ✓ {filename} (cached, {dest.stat().st_size / 1e6:.1f} MB)")
             continue
-        _download_file(f"{base_url}/{filename}", dest)
+        download_file(f"{base_url}/{filename}", dest)
 
     return dest_dir
 

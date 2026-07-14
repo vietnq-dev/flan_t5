@@ -26,6 +26,7 @@ runs/
 .ipynb_checkpoints/
 .DS_Store
 
+/data/
 data/cache/
 .cache/
 
