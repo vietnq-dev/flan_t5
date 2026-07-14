@@ -33,9 +33,57 @@ def main() -> None:
     parser.add_argument(
         "--max-samples", type=int, default=None, help="Limit total samples before split (streaming)"
     )
+    # Training overrides
+    parser.add_argument(
+        "--batch-size", type=int, default=None, help="Override per_device_train_batch_size"
+    )
+    parser.add_argument(
+        "--eval-batch-size", type=int, default=None, help="Override per_device_eval_batch_size"
+    )
+    parser.add_argument(
+        "--grad-accum", type=int, default=None, help="Override gradient_accumulation_steps"
+    )
+    parser.add_argument(
+        "--learning-rate", type=float, default=None, help="Override learning rate"
+    )
+    parser.add_argument("--epochs", type=int, default=None, help="Override num_train_epochs")
+    parser.add_argument(
+        "--warmup-ratio", type=float, default=None, help="Override warmup_ratio"
+    )
+    parser.add_argument("--fp16", action="store_true", default=None, help="Force fp16")
+    parser.add_argument("--bf16", action="store_true", default=None, help="Force bf16")
+    parser.add_argument(
+        "--max-source-length", type=int, default=None, help="Override max_source_length"
+    )
+    parser.add_argument(
+        "--max-target-length", type=int, default=None, help="Override max_target_length"
+    )
     args = parser.parse_args()
 
     config = load_config(args.config, args.base_config)
+
+    # Apply CLI overrides
+    if args.batch_size is not None:
+        config["training"]["per_device_train_batch_size"] = args.batch_size
+    if args.eval_batch_size is not None:
+        config["training"]["per_device_eval_batch_size"] = args.eval_batch_size
+    if args.grad_accum is not None:
+        config["training"]["gradient_accumulation_steps"] = args.grad_accum
+    if args.learning_rate is not None:
+        config["training"]["learning_rate"] = args.learning_rate
+    if args.epochs is not None:
+        config["training"]["num_train_epochs"] = args.epochs
+    if args.warmup_ratio is not None:
+        config["training"]["warmup_ratio"] = args.warmup_ratio
+    if args.fp16:
+        config.setdefault("precision", {})["fp16"] = True
+    if args.bf16:
+        config.setdefault("precision", {})["bf16"] = True
+    if args.max_source_length is not None:
+        config["data"]["max_source_length"] = args.max_source_length
+    if args.max_target_length is not None:
+        config["data"]["max_target_length"] = args.max_target_length
+
     set_seed(config.get("advanced", {}).get("seed", 42))
 
     output_dir = args.output_dir or get_output_dir(config)
