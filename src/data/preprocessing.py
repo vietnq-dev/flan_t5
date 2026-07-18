@@ -6,9 +6,17 @@ from datasets import Dataset
 from transformers import PreTrainedTokenizer
 
 
+def _first_value(example: dict[str, Any], keys: list[str]) -> str:
+    for key in keys:
+        val = example.get(key)
+        if val is not None:
+            return str(val)
+    return ""
+
+
 def preprocess_cot_example(example: dict[str, Any], use_cot: bool = True) -> dict[str, str]:
-    source = example.get("source", example.get("input", example.get("question", "")))
-    target = example.get("target", example.get("output", example.get("answer", "")))
+    source = _first_value(example, ["source", "input", "question"])
+    target = _first_value(example, ["target", "output", "answer"])
     rationale = example.get("rationale", "")
 
     if use_cot and rationale:
@@ -18,8 +26,8 @@ def preprocess_cot_example(example: dict[str, Any], use_cot: bool = True) -> dic
 
 
 def preprocess_sat_math_example(example: dict[str, Any]) -> dict[str, str]:
-    source = example.get("source", example.get("input", example.get("question", "")))
-    target = example.get("target", example.get("output", example.get("answer", "")))
+    source = _first_value(example, ["source", "input", "question", "text"])
+    target = _first_value(example, ["target", "output", "answer", "solution"])
     return {"input_text": source, "target_text": target}
 
 
@@ -33,18 +41,24 @@ def tokenize_dataset(
 ) -> Dataset:
     def preprocess_fn(examples: dict[str, list]) -> dict[str, list]:
         is_cot = "rationale" in examples
+        already_preprocessed = "input_text" in examples and "target_text" in examples
         input_texts = []
         target_texts = []
 
         batch_size = len(next(iter(examples.values())))
         for i in range(batch_size):
             ex = {k: v[i] for k, v in examples.items()}
-            if is_cot:
+            if already_preprocessed:
+                input_texts.append(ex["input_text"])
+                target_texts.append(ex["target_text"])
+            elif is_cot:
                 processed = preprocess_cot_example(ex, use_cot=use_cot)
+                input_texts.append(processed["input_text"])
+                target_texts.append(processed["target_text"])
             else:
                 processed = preprocess_sat_math_example(ex)
-            input_texts.append(processed["input_text"])
-            target_texts.append(processed["target_text"])
+                input_texts.append(processed["input_text"])
+                target_texts.append(processed["target_text"])
 
         model_inputs = tokenizer(
             input_texts,
@@ -67,16 +81,6 @@ def tokenize_dataset(
 
         model_inputs["labels"] = label_ids
         return model_inputs
-
-    if "input_text" not in dataset.column_names:
-        is_cot = "rationale" in dataset.column_names
-        if is_cot:
-            dataset = dataset.map(
-                lambda ex: preprocess_cot_example(ex, use_cot=use_cot),
-                num_proc=num_proc,
-            )
-        else:
-            dataset = dataset.map(preprocess_sat_math_example, num_proc=num_proc)
 
     tokenized = dataset.map(
         preprocess_fn,
