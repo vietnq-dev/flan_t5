@@ -34,25 +34,7 @@ uv run python scripts/train.py \
 uv run scripts/run_experiment.py --experiment exp31
 ```
 
-**Đánh giá sau khi train:**
 
-```bash
-uv run python scripts/evaluate.py \
-  --config configs/exp31_scaling_tasks/flan_t5_small_50tasks.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp31_scaling_tasks/flan_t5_small_100tasks.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp31_scaling_tasks/flan_t5_small_300tasks.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp31_scaling_tasks/flan_t5_small_600tasks.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-```
 
 ---
 
@@ -76,18 +58,6 @@ uv run python scripts/train.py \
   --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
 ```
 
-**Đánh giá:**
-
-```bash
-uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml \
-  --checkpoint outputs/flan-t5-base/<run_folder>
-```
-
 ### Trang — SAT Reading only
 
 **Số configs:** 2
@@ -100,18 +70,6 @@ uv run python scripts/train.py \
 # Flan-T5-Base trên SAT Reading
 uv run python scripts/train.py \
   --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml
-```
-
-**Đánh giá:**
-
-```bash
-uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml \
-  --checkpoint outputs/flan-t5-base/<run_folder>
 ```
 
 ---
@@ -148,26 +106,6 @@ uv run python scripts/train.py \
 
 ```bash
 uv run scripts/run_experiment.py --experiment exp33
-```
-
-**Đánh giá sau khi train:**
-
-```bash
-uv run python scripts/evaluate.py \
-  --config configs/exp33_cot/flan_t5_small_no_cot.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp33_cot/flan_t5_small_with_cot.yaml \
-  --checkpoint outputs/flan-t5-small/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp33_cot/flan_t5_base_no_cot.yaml \
-  --checkpoint outputs/flan-t5-base/<run_folder>
-
-uv run python scripts/evaluate.py \
-  --config configs/exp33_cot/flan_t5_base_with_cot.yaml \
-  --checkpoint outputs/flan-t5-base/<run_folder>
 ```
 
 ---
