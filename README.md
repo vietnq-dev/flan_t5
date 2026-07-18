@@ -130,7 +130,7 @@ uv run python scripts/evaluate.py \
 
 ### 2. Exp 3.2 — Scaling model size (~1–2h on T4)
 
-Train Small and Base on SAT Reading + Elementary Math.
+Train Small and Base on SAT Reading (alone) and SAT Reading + Elementary Math (combined). Four configs in total — single-dataset and multi-dataset variants for each model size.
 
 **Batch run:**
 
@@ -141,15 +141,28 @@ uv run scripts/run_experiment.py --experiment exp32
 **Individual configs:**
 
 ```bash
+# -- SAT Reading only (small dataset, fast) ------------------------------
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml
+
+# -- SAT Reading + Elementary Math (combined) ----------------------------
 uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml
 uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
 ```
 
-**What to look for:** Base > Small on the same data — instruction-tuning benefits scale with model size.
+**What to look for:** Base > Small on the same data — instruction-tuning benefits scale with model size. Combined datasets reduce overfitting on the tiny SAT Reading split.
 
 **Evaluate:**
 
 ```bash
+uv run python scripts/evaluate.py \
+  --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml \
+  --checkpoint outputs/flan-t5-small/<sat_reading_small_run>
+
+uv run python scripts/evaluate.py \
+  --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml \
+  --checkpoint outputs/flan-t5-base/<sat_reading_base_run>
+
 uv run python scripts/evaluate.py \
   --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml \
   --checkpoint outputs/flan-t5-small/<sat_math_small_run>
@@ -227,7 +240,7 @@ flan_t5/
 ├── configs/
 │   ├── base.yaml                          # Shared defaults (fp32/bf16, workers=0)
 │   ├── exp31_scaling_tasks/               # 4 configs: 100/300/600/1060 tasks
-│   ├── exp32_scaling_model/               # 2 configs: small + base on SAT/math
+│   ├── exp32_scaling_model/               # 4 configs: SAT reading + SAT/math × small/base
 │   └── exp33_cot/                         # 4 configs: with/without CoT x small/base
 ├── src/
 │   ├── data/
