@@ -84,6 +84,7 @@ def load_sat_math_datasets(
     dataset_configs: list[dict[str, str]],
     eval_ratio: float = 0.1,
     seed: int = 42,
+    max_samples: int | None = None,
 ) -> DatasetDict:
     datasets = []
     for cfg in dataset_configs:
@@ -91,18 +92,23 @@ def load_sat_math_datasets(
         datasets.append(ds)
 
     combined = concatenate_datasets(datasets)
+    if max_samples is not None and max_samples < len(combined):
+        combined = combined.select(range(max_samples))
     split = combined.train_test_split(test_size=eval_ratio, seed=seed)
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
 
 def load_datasets(config: dict[str, Any], max_samples: int | None = None) -> DatasetDict:
     data_config = config["data"]
+    if max_samples is None:
+        max_samples = data_config.get("max_samples")
 
     if data_config.get("datasets"):
         return load_sat_math_datasets(
             data_config["datasets"],
             eval_ratio=data_config.get("eval_ratio", 0.1),
             seed=data_config.get("seed", 42),
+            max_samples=max_samples,
         )
 
     return load_cot_collection(

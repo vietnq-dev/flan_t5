@@ -11,6 +11,7 @@ data:
   dataset_name: "kaist-ai/CoT-Collection"
   num_tasks: 600
   use_cot: true
+  max_samples: 100000
   max_source_length: 384
   max_target_length: 256
   eval_ratio: 0.05
