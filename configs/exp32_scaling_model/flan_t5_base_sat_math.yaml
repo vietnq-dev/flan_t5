@@ -1,16 +1,14 @@
 experiment:
   id: "exp32"
   name: "scaling_model_base_sat_math"
-  description: "Flan-T5-Base fine-tuned on SAT Reading + Elementary Math"
-  tags: [flan-t5-base, scaling-model, exp32, sat-reading, elementary-math]
+  description: "Flan-T5-Base fine-tuned on Elementary Math"
+  tags: [flan-t5-base, scaling-model, exp32, elementary-math]
 
 model:
   name_or_path: "google/flan-t5-base"
 
 data:
   datasets:
-    - name: "emozilla/sat-reading"
-      split: "train"
     - name: "emozilla/elementary_math-v1"
       split: "train"
   dataset_name: null

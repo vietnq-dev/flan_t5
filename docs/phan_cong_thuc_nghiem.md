@@ -44,16 +44,16 @@ uv run scripts/run_experiment.py --experiment exp31
 
 **Model:** `google/flan-t5-small`, `google/flan-t5-base`
 
-### Khang — SAT Reading + Elementary Math (combined)
+### Khang — Elementary Math
 
 **Số configs:** 2
 
 ```bash
-# Flan-T5-Small trên SAT Reading + Elementary Math
+# Flan-T5-Small trên Elementary Math
 uv run python scripts/train.py \
   --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml
 
-# Flan-T5-Base trên SAT Reading + Elementary Math
+# Flan-T5-Base trên Elementary Math
 uv run python scripts/train.py \
   --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
 ```
