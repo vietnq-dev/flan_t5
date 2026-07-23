@@ -1,0 +1,54 @@
+experiment:
+  id: "exp32"
+  name: "scaling_model_small_gsm8k"
+  description: "Flan-T5-Small fine-tuned on GSM8K"
+  tags: [flan-t5-small, scaling-model, exp32, gsm8k]
+
+model:
+  name_or_path: "google/flan-t5-small"
+
+data:
+  datasets:
+    - name: "openai/gsm8k"
+      config: "main"
+      split: "train"
+  eval_datasets:
+    - name: "openai/gsm8k"
+      config: "main"
+      split: "test"
+  dataset_name: null
+  num_tasks: null
+  use_cot: false
+  max_samples: null
+  max_source_length: 512
+  max_target_length: 512
+  eval_ratio: 0.1
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 3.0e-5
+  lr_scheduler_type: "linear"
+  warmup_ratio: 0.06
+
+logging:
+  logging_steps: 25
+  report_to:
+    - "tensorboard"
+
+saving:
+  save_strategy: "epoch"
+  save_total_limit: 2
+
+evaluation:
+  evaluation_strategy: "epoch"
+  predict_with_generate: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  load_best_model_at_end: true
+
+generation:
+  max_length: 512
+  num_beams: 4

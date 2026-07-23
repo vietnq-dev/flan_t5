@@ -58,18 +58,18 @@ uv run python scripts/train.py \
   --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
 ```
 
-### Trang — SAT Reading only
+### Trang — GSM8K
 
 **Số configs:** 2
 
 ```bash
-# Flan-T5-Small trên SAT Reading
+# Flan-T5-Small trên GSM8K
 uv run python scripts/train.py \
-  --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml
+  --config configs/exp32_scaling_model/flan_t5_small_gsm8k.yaml
 
-# Flan-T5-Base trên SAT Reading
+# Flan-T5-Base trên GSM8K
 uv run python scripts/train.py \
-  --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml
+  --config configs/exp32_scaling_model/flan_t5_base_gsm8k.yaml
 ```
 
 ---

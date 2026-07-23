@@ -130,7 +130,7 @@ uv run python scripts/evaluate.py \
 
 ### 2. Exp 3.2 — Scaling model size (~1–2h on T4)
 
-Train Small and Base on SAT Reading (alone) and SAT Reading + Elementary Math (combined). Four configs in total — single-dataset and multi-dataset variants for each model size.
+Train Small and Base on GSM8K and Elementary Math. Four configs in total — two dataset variants for each model size.
 
 **Batch run:**
 
@@ -141,27 +141,27 @@ uv run scripts/run_experiment.py --experiment exp32
 **Individual configs:**
 
 ```bash
-# -- SAT Reading only (small dataset, fast) ------------------------------
-uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml
-uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml
+# -- GSM8K ---------------------------------------------------------------
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_gsm8k.yaml
+uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_gsm8k.yaml
 
-# -- SAT Reading + Elementary Math (combined) ----------------------------
+# -- Elementary Math -----------------------------------------------------
 uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml
 uv run python scripts/train.py --config configs/exp32_scaling_model/flan_t5_base_sat_math.yaml
 ```
 
-**What to look for:** Base > Small on the same data — instruction-tuning benefits scale with model size. Combined datasets reduce overfitting on the tiny SAT Reading split.
+**What to look for:** Base > Small on the same data — instruction-tuning benefits scale with model size. GSM8K gives a larger and more stable reasoning benchmark than the tiny SAT Reading split.
 
 **Evaluate:**
 
 ```bash
 uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml \
-  --checkpoint outputs/flan-t5-small/<sat_reading_small_run>
+  --config configs/exp32_scaling_model/flan_t5_small_gsm8k.yaml \
+  --checkpoint outputs/flan-t5-small/<gsm8k_small_run>
 
 uv run python scripts/evaluate.py \
-  --config configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml \
-  --checkpoint outputs/flan-t5-base/<sat_reading_base_run>
+  --config configs/exp32_scaling_model/flan_t5_base_gsm8k.yaml \
+  --checkpoint outputs/flan-t5-base/<gsm8k_base_run>
 
 uv run python scripts/evaluate.py \
   --config configs/exp32_scaling_model/flan_t5_small_sat_math.yaml \
@@ -244,7 +244,7 @@ flan_t5/
 │   └── exp33_cot/                         # 4 configs: with/without CoT x small/base
 ├── src/
 │   ├── data/
-│   │   ├── dataset.py                     # Load CoT-Collection, sat-reading, elementary_math
+│   │   ├── dataset.py                     # Load CoT-Collection, GSM8K, elementary_math
 │   │   └── preprocessing.py               # Tokenization, CoT formatting
 │   ├── models/
 │   │   └── model.py                       # Model/tokenizer loading
@@ -344,7 +344,7 @@ Colab streams events live; keep `--logdir outputs` to compare all runs
 | Dataset | Source | Use |
 |---------|--------|-----|
 | CoT-Collection | `kaist-ai/CoT-Collection` | Exp 3.1, 3.3 (1.84M examples, 1060 tasks) |
-| SAT Reading | `emozilla/sat-reading` | Exp 3.2 |
+| GSM8K | `openai/gsm8k` | Exp 3.2 |
 | Elementary Math | `emozilla/elementary_math-v1` | Exp 3.2 |
 
 ## Tips for Low-Resource

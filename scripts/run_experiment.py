@@ -18,10 +18,10 @@ EXPERIMENTS = {
         ],
     },
     "exp32": {
-        "description": "Scaling model size (SAT Reading / SAT+Math)",
+        "description": "Scaling model size (GSM8K / Elementary Math)",
         "configs": [
-            "configs/exp32_scaling_model/flan_t5_small_sat_reading.yaml",
-            "configs/exp32_scaling_model/flan_t5_base_sat_reading.yaml",
+            "configs/exp32_scaling_model/flan_t5_small_gsm8k.yaml",
+            "configs/exp32_scaling_model/flan_t5_base_gsm8k.yaml",
             "configs/exp32_scaling_model/flan_t5_small_sat_math.yaml",
             "configs/exp32_scaling_model/flan_t5_base_sat_math.yaml",
         ],

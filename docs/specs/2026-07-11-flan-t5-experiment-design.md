@@ -7,7 +7,7 @@
 
 Replicate small-scale experiments from the Flan-T5 paper using:
 - Models: Flan-T5-Small (77M) and Flan-T5-Base (248M)
-- Datasets: kaist-ai/CoT-Collection, emozilla/sat-reading, emozilla/elementary_math-v1
+- Datasets: kaist-ai/CoT-Collection, openai/gsm8k, emozilla/elementary_math-v1
 - Hardware: CPU/low-resource
 
 ## Experiments
@@ -22,7 +22,7 @@ Replicate small-scale experiments from the Flan-T5 paper using:
 ### 3.2 Scaling Model Size
 - **Goal:** Compare small vs base model on same domain data
 - **Models:** flan-t5-small, flan-t5-base
-- **Dataset:** SAT Reading + Elementary Math
+- **Dataset:** GSM8K + Elementary Math
 - **Expected:** Larger models benefit more from instruction tuning
 
 ### 3.3 Chain-of-Thought Effect

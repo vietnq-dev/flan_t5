@@ -80,21 +80,41 @@ def load_cot_collection(
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
 
-def load_sat_math_datasets(
+def _load_and_concatenate(
     dataset_configs: list[dict[str, str]],
-    eval_ratio: float = 0.1,
-    seed: int = 42,
     max_samples: int | None = None,
-) -> DatasetDict:
+):
     datasets = []
     for cfg in dataset_configs:
-        ds = load_dataset(cfg["name"], split=cfg.get("split", "train"))
+        name = cfg["name"]
+        dataset_config = cfg.get("config")
+        split = cfg.get("split", "train")
+        if dataset_config:
+            ds = load_dataset(name, dataset_config, split=split)
+        else:
+            ds = load_dataset(name, split=split)
         datasets.append(ds)
 
     combined = concatenate_datasets(datasets)
     if max_samples is not None and max_samples < len(combined):
         combined = combined.select(range(max_samples))
-    split = combined.train_test_split(test_size=eval_ratio, seed=seed)
+    return combined
+
+
+def load_configured_datasets(
+    dataset_configs: list[dict[str, str]],
+    eval_dataset_configs: list[dict[str, str]] | None = None,
+    eval_ratio: float = 0.1,
+    seed: int = 42,
+    max_samples: int | None = None,
+) -> DatasetDict:
+    train_dataset = _load_and_concatenate(dataset_configs, max_samples=max_samples)
+
+    if eval_dataset_configs:
+        eval_dataset = _load_and_concatenate(eval_dataset_configs, max_samples=max_samples)
+        return DatasetDict({"train": train_dataset, "eval": eval_dataset})
+
+    split = train_dataset.train_test_split(test_size=eval_ratio, seed=seed)
     return DatasetDict({"train": split["train"], "eval": split["test"]})
 
 
@@ -104,8 +124,9 @@ def load_datasets(config: dict[str, Any], max_samples: int | None = None) -> Dat
         max_samples = data_config.get("max_samples")
 
     if data_config.get("datasets"):
-        return load_sat_math_datasets(
+        return load_configured_datasets(
             data_config["datasets"],
+            eval_dataset_configs=data_config.get("eval_datasets"),
             eval_ratio=data_config.get("eval_ratio", 0.1),
             seed=data_config.get("seed", 42),
             max_samples=max_samples,
