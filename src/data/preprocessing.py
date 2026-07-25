@@ -49,6 +49,17 @@ def preprocess_boolq_example(example: dict[str, Any]) -> dict[str, str]:
     return {"input_text": source, "target_text": target}
 
 
+def preprocess_squad_example(example: dict[str, Any]) -> dict[str, str]:
+    question = _first_value(example, ["question"])
+    context = _first_value(example, ["context", "passage"])
+    answers = example.get("answers") or {}
+    answer_texts = answers.get("text", []) if isinstance(answers, dict) else []
+    target = str(answer_texts[0]) if answer_texts else ""
+
+    source = f"question: {question}\ncontext: {context}"
+    return {"input_text": source, "target_text": target}
+
+
 def tokenize_dataset(
     dataset: Dataset,
     tokenizer: PreTrainedTokenizer,
@@ -60,6 +71,7 @@ def tokenize_dataset(
     def preprocess_fn(examples: dict[str, list]) -> dict[str, list]:
         is_cot = "rationale" in examples
         is_boolq = "passage" in examples and "question" in examples and "answer" in examples
+        is_squad = "context" in examples and "question" in examples and "answers" in examples
         already_preprocessed = "input_text" in examples and "target_text" in examples
         input_texts = []
         target_texts = []
@@ -72,6 +84,10 @@ def tokenize_dataset(
                 target_texts.append(ex["target_text"])
             elif is_boolq:
                 processed = preprocess_boolq_example(ex)
+                input_texts.append(processed["input_text"])
+                target_texts.append(processed["target_text"])
+            elif is_squad:
+                processed = preprocess_squad_example(ex)
                 input_texts.append(processed["input_text"])
                 target_texts.append(processed["target_text"])
             elif is_cot:

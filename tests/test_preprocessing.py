@@ -1,6 +1,6 @@
 from datasets import Dataset
 
-from src.data.preprocessing import preprocess_boolq_example, tokenize_dataset
+from src.data.preprocessing import preprocess_boolq_example, preprocess_squad_example, tokenize_dataset
 
 
 class DummyTokenizer:
@@ -66,3 +66,45 @@ def test_tokenize_dataset_handles_boolq_columns() -> None:
         skip_special_tokens=True,
     )
     assert decoded_label == "no"
+
+
+def test_preprocess_squad_example_uses_context_and_first_answer() -> None:
+    example = {
+        "question": "Where was Tesla born?",
+        "context": "Nikola Tesla was born in Smiljan.",
+        "answers": {"text": ["Smiljan"], "answer_start": [27]},
+    }
+
+    result = preprocess_squad_example(example)
+
+    assert result["input_text"] == (
+        "question: Where was Tesla born?\ncontext: Nikola Tesla was born in Smiljan."
+    )
+    assert result["target_text"] == "Smiljan"
+
+
+def test_tokenize_dataset_handles_squad_columns() -> None:
+    dataset = Dataset.from_dict(
+        {
+            "id": ["1"],
+            "title": ["Tesla"],
+            "question": ["Where was Tesla born?"],
+            "context": ["Nikola Tesla was born in Smiljan."],
+            "answers": [{"text": ["Smiljan"], "answer_start": [27]}],
+        }
+    )
+    tokenizer = DummyTokenizer()
+
+    tokenized = tokenize_dataset(
+        dataset,
+        tokenizer,
+        max_source_length=64,
+        max_target_length=16,
+        num_proc=1,
+    )
+
+    decoded_label = tokenizer.decode(
+        [token_id for token_id in tokenized[0]["labels"] if token_id != -100],
+        skip_special_tokens=True,
+    )
+    assert decoded_label == "Smiljan"
