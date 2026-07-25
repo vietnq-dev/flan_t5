@@ -1,9 +1,38 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import numpy as np
 from rouge_score import rouge_scorer
+
+
+def normalize_bool_answer(text: str) -> str:
+    text = text.strip().lower()
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    tokens = text.split()
+
+    if not tokens:
+        return ""
+    if tokens[0] in {"yes", "true", "1"}:
+        return "yes"
+    if tokens[0] in {"no", "false", "0"}:
+        return "no"
+    if "yes" in tokens or "true" in tokens:
+        return "yes"
+    if "no" in tokens or "false" in tokens:
+        return "no"
+    return " ".join(tokens)
+
+
+def _is_bool_label(label: str) -> bool:
+    return normalize_bool_answer(label) in {"yes", "no"}
+
+
+def exact_match_score(pred: str, label: str) -> bool:
+    if _is_bool_label(label):
+        return normalize_bool_answer(pred) == normalize_bool_answer(label)
+    return pred.strip() == label.strip()
 
 
 def compute_metrics(eval_preds: Any) -> dict[str, float]:
@@ -25,7 +54,7 @@ def compute_metrics(eval_preds: Any) -> dict[str, float]:
         pred = pred.strip()
         label = label.strip()
 
-        if pred == label:
+        if exact_match_score(pred, label):
             exact_matches += 1
 
         scores = scorer.score(label, pred)
@@ -81,7 +110,7 @@ def compute_metrics_with_tokenizer(tokenizer: Any):
         total = len(decoded_preds)
 
         for pred, label in zip(decoded_preds, decoded_labels):
-            if pred == label:
+            if exact_match_score(pred, label):
                 exact_matches += 1
 
             scores = scorer.score(label, pred)

@@ -31,6 +31,24 @@ def preprocess_sat_math_example(example: dict[str, Any]) -> dict[str, str]:
     return {"input_text": source, "target_text": target}
 
 
+def preprocess_boolq_example(example: dict[str, Any]) -> dict[str, str]:
+    question = _first_value(example, ["question"])
+    passage = _first_value(example, ["passage", "context"])
+    answer = example.get("answer")
+
+    if isinstance(answer, bool):
+        target = "yes" if answer else "no"
+    else:
+        target = _first_value(example, ["target", "output", "answer"]).strip().lower()
+        if target in {"true", "1"}:
+            target = "yes"
+        elif target in {"false", "0"}:
+            target = "no"
+
+    source = f"question: {question}\npassage: {passage}"
+    return {"input_text": source, "target_text": target}
+
+
 def tokenize_dataset(
     dataset: Dataset,
     tokenizer: PreTrainedTokenizer,
@@ -41,6 +59,7 @@ def tokenize_dataset(
 ) -> Dataset:
     def preprocess_fn(examples: dict[str, list]) -> dict[str, list]:
         is_cot = "rationale" in examples
+        is_boolq = "passage" in examples and "question" in examples and "answer" in examples
         already_preprocessed = "input_text" in examples and "target_text" in examples
         input_texts = []
         target_texts = []
@@ -51,6 +70,10 @@ def tokenize_dataset(
             if already_preprocessed:
                 input_texts.append(ex["input_text"])
                 target_texts.append(ex["target_text"])
+            elif is_boolq:
+                processed = preprocess_boolq_example(ex)
+                input_texts.append(processed["input_text"])
+                target_texts.append(processed["target_text"])
             elif is_cot:
                 processed = preprocess_cot_example(ex, use_cot=use_cot)
                 input_texts.append(processed["input_text"])

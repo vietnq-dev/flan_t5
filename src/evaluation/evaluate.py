@@ -8,6 +8,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
+from src.evaluation.metrics import exact_match_score
 from src.utils.helpers import get_device
 from src.utils.logging import print_results_table, save_metrics
 
@@ -93,7 +94,7 @@ def evaluate_checkpoint(
         unit="ex",
     )
     for pred, ref in scoring:
-        if pred == ref:
+        if exact_match_score(pred, ref):
             exact_matches += 1
         scores = scorer.score(ref, pred)
         rouge_scores["rouge1"].append(scores["rouge1"].fmeasure)
